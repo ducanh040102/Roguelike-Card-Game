@@ -10,12 +10,12 @@ namespace NueGames.NueDeck.Scripts.Collection
 {
     public class HandController : MonoBehaviour
     {
-        [Header("Card Settings")] 
+        [Header("Card Settings")]
         [SerializeField] private bool cardUprightWhenSelected = true;
         [SerializeField] private bool cardTilt = true;
-        
+
         [Header("Hand Settings")]
-        [SerializeField] [Range(0, 5)] private float selectionSpacing = 1;
+        [SerializeField][Range(0, 5)] private float selectionSpacing = 1;
         [SerializeField] private Vector3 curveStart = new Vector3(2f, -0.7f, 0);
         [SerializeField] private Vector3 curveEnd = new Vector3(-2f, -0.7f, 0);
         [SerializeField] private Vector2 handOffset = new Vector2(0, -0.3f);
@@ -28,7 +28,7 @@ namespace NueGames.NueDeck.Scripts.Collection
         public LayerMask selectableLayer;
         public LayerMask targetLayer;
         public Camera cam = null;
-        [HideInInspector]public List<CardBase> hand; // Cards currently in hand
+        [HideInInspector] public List<CardBase> hand; // Cards currently in hand
 
         #region Cache
         protected FxManager FxManager => FxManager.Instance;
@@ -37,10 +37,10 @@ namespace NueGames.NueDeck.Scripts.Collection
         protected CombatManager CombatManager => CombatManager.Instance;
         protected CollectionManager CollectionManager => CollectionManager.Instance;
         protected UIManager UIManager => UIManager.Instance;
-        
+
         private Plane _plane; // world XY plane, used for mouse position raycasts
         private Vector3 _a, _b, _c; // Used for shaping hand into curve
-       
+
         private int _selected = -1; // Card index that is nearest to mouse
         private int _dragged = -1; // Card index that is held by mouse (inside of hand)
         private CardBase _heldCard; // Card that is held by mouse (when outside of hand)
@@ -53,12 +53,12 @@ namespace NueGames.NueDeck.Scripts.Collection
 
         private Rect _handBounds;
         private bool _mouseInsideHand;
-        
+
         private bool updateHierarchyOrder = false;
         private bool showDebugGizmos = true;
-        
+
         private Camera _mainCam;
-        
+
         public bool IsDraggingActive { get; private set; } = true;
 
         #endregion
@@ -83,7 +83,7 @@ namespace NueGames.NueDeck.Scripts.Collection
             _plane = new Plane(-Vector3.forward, transform.position);
             _prevMousePos = Input.mousePosition;
         }
-        
+
 
         #endregion
 
@@ -95,7 +95,7 @@ namespace NueGames.NueDeck.Scripts.Collection
             // --------------------------------------------------------
 
             if (!IsDraggingActive) return;
-           
+
             var mousePos = HandleMouseInput(out var count, out var sqrDistance, out var mouseButton);
 
             // --------------------------------------------------------
@@ -116,10 +116,12 @@ namespace NueGames.NueDeck.Scripts.Collection
             // (Card held by mouse, outside of the hand)
             // --------------------------------------------------------
 
-            HandleDraggedCardOutsideHand(mouseButton, mousePos);
+            //HandleDraggedCardOutsideHand(mouseButton, mousePos);
+
+            //HandleClickOnCard(mouseButton, mousePos);
         }
         #endregion
-        
+
         #region Methods
         public void EnableDragging() => IsDraggingActive = true;
         public void DisableDragging() => IsDraggingActive = false;
@@ -165,7 +167,7 @@ namespace NueGames.NueDeck.Scripts.Collection
                 float selectOffset = 0;
                 if (noCardHeld)
                     selectOffset = 0.02f *
-                                   Mathf.Clamp01(1 - Mathf.Abs(Mathf.Abs(i - _selected) - 1) / (float) count * 3) *
+                                   Mathf.Clamp01(1 - Mathf.Abs(Mathf.Abs(i - _selected) - 1) / (float)count * 3) *
                                    Mathf.Sign(i - _selected);
 
                 var t = (i + 0.5f) / count + selectOffset * selectionSpacing;
@@ -186,7 +188,7 @@ namespace NueGames.NueDeck.Scripts.Collection
                 if (cardTilt && onSelectedCard && mouseButton) {
                     cardForward -= new Vector3(heldCardOffset.x, heldCardOffset.y, 0);
                 }*/
-
+                
                 // Sorting Order
                 if (mouseHoveringOnSelected || onDraggedCard)
                 {
@@ -198,7 +200,7 @@ namespace NueGames.NueDeck.Scripts.Collection
                 {
                     cardPos.z = transform.position.z + t * 0.5f;
                 }
-
+                
                 // Rotation
                 cardTransform.rotation = Quaternion.RotateTowards(cardTransform.rotation,
                     Quaternion.LookRotation(cardForward, cardUp), 80f * Time.deltaTime);
@@ -214,7 +216,7 @@ namespace NueGames.NueDeck.Scripts.Collection
                         _heldCardOffset.z = -0.1f;
                     }
                 }
-
+                
                 // Handle Card Position
                 if (onDraggedCard && mouseButton)
                 {
@@ -227,7 +229,7 @@ namespace NueGames.NueDeck.Scripts.Collection
                     cardPos = Vector3.MoveTowards(cardTransform.position, cardPos, 16f * Time.deltaTime);
                     cardTransform.position = cardPos;
                 }
-
+                /*
                 // Get Selected Card
                 if (GameManager.PersistentGameplayData.CanSelectCards)
                 {
@@ -256,108 +258,136 @@ namespace NueGames.NueDeck.Scripts.Collection
 
                     Debug.DrawLine(p, _mouseWorldPos, c);
                 }
+                */
             }
         }
 
-        private void HandleDraggedCardOutsideHand(bool mouseButton, Vector2 mousePos)
+        private void HandleClickOnCard(bool mouseButton, Vector2 mousePos)
         {
-            if (_heldCard != null)
-            {
-                var cardTransform = _heldCard.transform;
-                var cardUp = Vector3.up;
-                var cardPos = _mouseWorldPos + _heldCardOffset;
-                var cardForward = Vector3.forward;
-                if (cardTilt && mouseButton) cardForward -= new Vector3(_heldCardTilt.x, _heldCardTilt.y, 0);
+            var mouseButtonDown = Input.GetMouseButtonDown(0);
+            if (!mouseButtonDown) return;
 
-                // Bring card to front
-                cardPos.z = transform.position.z - 0.2f;
-
-                // Handle Position & Rotation
-                cardTransform.rotation = Quaternion.RotateTowards(cardTransform.rotation,
-                    Quaternion.LookRotation(cardForward, cardUp), 80f * Time.deltaTime);
-                cardTransform.position = cardPos;
-
-                CombatManager.HighlightCardTarget(_heldCard.CardData.CardActionDataList[0].ActionTargetType);
-
-                //if (!canSelectCards || cardTransform.position.y <= transform.position.y + 0.5f) {
-                if (!GameManager.PersistentGameplayData.CanSelectCards || _mouseInsideHand)
-                {
-                    //  || sqrDistance <= 2
-                    // Card has gone back into hand
-                    AddCardToHand(_heldCard, _selected);
-                    _dragged = _selected;
-                    _selected = -1;
-                    _heldCard = null;
-
-                    CombatManager.DeactivateCardHighlights();
-
-                    return;
-                }
-
-                PlayCard(mousePos);
-            }
-        }
-
-        
-        private void PlayCard(Vector2 mousePos)
-        {
-            // Use Card
-            var mouseButtonUp = Input.GetMouseButtonUp(0);
-            if (!mouseButtonUp) return;
-            
-            //Remove highlights
-            CombatManager.DeactivateCardHighlights();
-            bool backToHand = true;
-                
             if (GameManager.PersistentGameplayData.CanUseCards && GameManager.PersistentGameplayData.CurrentMana >= _heldCard.CardData.ManaCost)
             {
-                RaycastHit hit;
-                var mainRay = _mainCam.ScreenPointToRay(mousePos);
-                var _canUse = false;
                 CharacterBase selfCharacter = CombatManager.CurrentMainAlly;
-                CharacterBase targetCharacter = null;
-
-                _canUse = _heldCard.CardData.UsableWithoutTarget || CheckPlayOnCharacter(mainRay, _canUse, ref selfCharacter, ref targetCharacter);
+                CharacterBase targetCharacter = GameManager.PersistentGameplayData.AllyList[Random.Range(0, GameManager.PersistentGameplayData.AllyList.Count)].GetCharacterBase();
                 
-                if (_canUse)
-                {
-                    backToHand = false;
-                    _heldCard.Use(selfCharacter,targetCharacter,CombatManager.CurrentEnemiesList,CombatManager.CurrentAlliesList);
-                }
+                Debug.Log("targetCharacter: " + targetCharacter.CharacterType);
+
+                // var checkEnemy = (_heldCard.CardData.CardActionDataList[0].ActionTargetType == ActionTargetType.Enemy &&
+                //                        targetCharacter.GetCharacterType() == CharacterType.Enemy);
+                // var checkAlly = (_heldCard.CardData.CardActionDataList[0].ActionTargetType == ActionTargetType.Ally &&
+                //                  targetCharacter.GetCharacterType() == CharacterType.Ally);
+
+                // _heldCard.Use(selfCharacter, targetCharacter, CombatManager.CurrentEnemiesList, CombatManager.CurrentAlliesList);
+
             }
 
-            if (backToHand) // Cannot use card / Not enough mana! Return card to hand!
-                AddCardToHand(_heldCard, _selected);
 
             _heldCard = null;
+
+
         }
 
-        private bool CheckPlayOnCharacter(Ray mainRay, bool _canUse, ref CharacterBase selfCharacter,
-            ref CharacterBase targetCharacter)
-        {
-            RaycastHit hit;
-            if (Physics.Raycast(mainRay, out hit, 1000, targetLayer))
-            {
-                var character = hit.collider.gameObject.GetComponent<ICharacter>();
+        // private void HandleDraggedCardOutsideHand(bool mouseButton, Vector2 mousePos)
+        // {
+        //     if (_heldCard != null)
+        //     {
+        //         var cardTransform = _heldCard.transform;
+        //         var cardUp = Vector3.up;
+        //         var cardPos = _mouseWorldPos + _heldCardOffset;
+        //         var cardForward = Vector3.forward;
+        //         if (cardTilt && mouseButton) cardForward -= new Vector3(_heldCardTilt.x, _heldCardTilt.y, 0);
 
-                if (character != null)
-                {
-                    var checkEnemy = (_heldCard.CardData.CardActionDataList[0].ActionTargetType == ActionTargetType.Enemy &&
-                                      character.GetCharacterType() == CharacterType.Enemy);
-                    var checkAlly = (_heldCard.CardData.CardActionDataList[0].ActionTargetType == ActionTargetType.Ally &&
-                                     character.GetCharacterType() == CharacterType.Ally);
+        //         // Bring card to front
+        //         cardPos.z = transform.position.z - 0.2f;
 
-                    if (checkEnemy || checkAlly)
-                    {
-                        _canUse = true;
-                        selfCharacter = CombatManager.CurrentMainAlly;
-                        targetCharacter = character.GetCharacterBase();
-                    }
-                }
-            }
+        //         // Handle Position & Rotation
+        //         cardTransform.rotation = Quaternion.RotateTowards(cardTransform.rotation,
+        //             Quaternion.LookRotation(cardForward, cardUp), 80f * Time.deltaTime);
+        //         cardTransform.position = cardPos;
 
-            return _canUse;
-        }
+        //         CombatManager.HighlightCardTarget(_heldCard.CardData.CardActionDataList[0].ActionTargetType);
+
+        //         //if (!canSelectCards || cardTransform.position.y <= transform.position.y + 0.5f) {
+        //         if (!GameManager.PersistentGameplayData.CanSelectCards || _mouseInsideHand)
+        //         {
+        //             //  || sqrDistance <= 2
+        //             // Card has gone back into hand
+        //             AddCardToHand(_heldCard, _selected);
+        //             _dragged = _selected;
+        //             _selected = -1;
+        //             _heldCard = null;
+
+        //             CombatManager.DeactivateCardHighlights();
+
+        //             return;
+        //         }
+
+        //         PlayCard(mousePos);
+        //     }
+        // }
+
+
+        // private void PlayCard(Vector2 mousePos)
+        // {
+        //     // Use Card
+        //     var mouseButtonUp = Input.GetMouseButtonUp(0);
+        //     if (!mouseButtonUp) return;
+
+        //     //Remove highlights
+        //     CombatManager.DeactivateCardHighlights();
+        //     bool backToHand = true;
+
+        //     if (GameManager.PersistentGameplayData.CanUseCards && GameManager.PersistentGameplayData.CurrentMana >= _heldCard.CardData.ManaCost)
+        //     {
+        //         RaycastHit hit;
+        //         var mainRay = _mainCam.ScreenPointToRay(mousePos);
+        //         var _canUse = false;
+        //         CharacterBase selfCharacter = CombatManager.CurrentMainAlly;
+        //         CharacterBase targetCharacter = null;
+
+        //         _canUse = _heldCard.CardData.UsableWithoutTarget || CheckPlayOnCharacter(mainRay, _canUse, ref selfCharacter, ref targetCharacter);
+
+        //         if (_canUse)
+        //         {
+        //             backToHand = false;
+        //             _heldCard.Use(selfCharacter,targetCharacter,CombatManager.CurrentEnemiesList,CombatManager.CurrentAlliesList);
+        //         }
+        //     }
+
+        //     if (backToHand) // Cannot use card / Not enough mana! Return card to hand!
+        //         AddCardToHand(_heldCard, _selected);
+
+        //     _heldCard = null;
+        // }
+
+        // private bool CheckPlayOnCharacter(Ray mainRay, bool _canUse, ref CharacterBase selfCharacter,
+        //     ref CharacterBase targetCharacter)
+        // {
+        //     RaycastHit hit;
+        //     if (Physics.Raycast(mainRay, out hit, 1000, targetLayer))
+        //     {
+        //         var character = hit.collider.gameObject.GetComponent<ICharacter>();
+
+        //         if (character != null)
+        //         {
+        //             var checkEnemy = (_heldCard.CardData.CardActionDataList[0].ActionTargetType == ActionTargetType.Enemy &&
+        //                               character.GetCharacterType() == CharacterType.Enemy);
+        //             var checkAlly = (_heldCard.CardData.CardActionDataList[0].ActionTargetType == ActionTargetType.Ally &&
+        //                              character.GetCharacterType() == CharacterType.Ally);
+
+        //             if (checkEnemy || checkAlly)
+        //             {
+        //                 _canUse = true;
+        //                 selfCharacter = CombatManager.CurrentMainAlly;
+        //                 targetCharacter = character.GetCharacterBase();
+        //             }
+        //         }
+        //     }
+
+        //     return _canUse;
+        // }
 
         private void HandleDraggedCardInsideHand(bool mouseButton, int count)
         {
